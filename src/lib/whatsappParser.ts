@@ -16,6 +16,13 @@ const SYSTEM_PATTERNS = [
   /^this message was deleted$/i,
   /^you deleted this message$/i,
   /^<media omitted>$/i,
+  /^image omitted$/i,
+  /^video omitted$/i,
+  /^audio omitted$/i,
+  /^sticker omitted$/i,
+  /^document omitted$/i,
+  /^GIF omitted$/i,
+  /^Contact card omitted$/i,
   /joined using this group's invite link$/i,
   /changed the group description$/i,
   /changed the subject from/i,
@@ -55,8 +62,9 @@ function isSystemMessage(content: string): boolean {
  * We capture: dateStr, timeStr, ampm (optional), sender, messageStart
  */
 
-// Date part: supports /, ., and - as separators (e.g. 1/15/23, 15.01.23, 15-01-2023)
-const DATE_PART = String.raw`(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4})`;
+// Date part: supports /, ., and - as separators
+// Handles: 1/15/23, 15.01.23, 15-01-2023, 2025/3/30 (year-first)
+const DATE_PART = String.raw`(\d{1,4}[\/.\-]\d{1,2}[\/.\-]\d{1,4})`;
 const TIME_PART = String.raw`(\d{1,2}:\d{2}(?::\d{2})?)`;
 const AMPM_PART = String.raw`(AM|PM|am|pm|a\.m\.|p\.m\.)?`;
 
@@ -143,24 +151,31 @@ function matchLine(line: string): LineMatch | null {
 }
 
 /**
- * Parse a date string in M/D/YY or D/M/YYYY format along with time and optional AM/PM.
- * We use a heuristic: if the year part is 4 digits, treat as D/M/YYYY.
- * Otherwise treat as M/D/YY (US WhatsApp default).
+ * Parse a date string along with time and optional AM/PM.
+ *
+ * Supported formats (heuristic):
+ *   - YYYY/M/D  → first part has 4 digits (year-first)
+ *   - DD/MM/YYYY → last part has 4 digits (day-first, intl)
+ *   - M/D/YY    → everything else (US default)
  */
 function parseDateTime(
   dateStr: string,
   timeStr: string,
   ampm: string | undefined
 ): Date {
-  const dateParts = dateStr.split(/[\/.\-]/).map(Number);
+  const parts = dateStr.split(/[\/.\-]/);
+  const dateParts = parts.map(Number);
   let month: number, day: number, year: number;
 
-  // Heuristic: if last part has 4 digits → DD/MM/YYYY
-  const yearPart = dateStr.split(/[\/.\-]/)[2];
-  if (yearPart.length === 4) {
-    // DD/MM/YYYY
-    day = dateParts[0];
+  if (parts[0].length === 4) {
+    // YYYY/M/D (year-first)
+    year = dateParts[0];
     month = dateParts[1] - 1; // JS months are 0-indexed
+    day = dateParts[2];
+  } else if (parts[2].length === 4) {
+    // DD/MM/YYYY (day-first, intl)
+    day = dateParts[0];
+    month = dateParts[1] - 1;
     year = dateParts[2];
   } else {
     // M/D/YY (US format)

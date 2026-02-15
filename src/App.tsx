@@ -161,7 +161,7 @@ function App() {
               contain lines like:
             </p>
             <pre className="text-xs bg-amber-100 rounded-lg p-3 text-amber-900 overflow-x-auto">
-              {"[1/15/23, 2:30 PM] Jane: Hello!\n12/01/2023, 14:30 - Jane: Hello!"}
+              {"[1/15/23, 2:30 PM] Jane: Hello!\n[2025/3/30, 3:43 PM] Jane: Hello!\n12/01/2023, 14:30 - Jane: Hello!"}
             </pre>
           </div>
         )}
