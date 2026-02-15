@@ -204,6 +204,7 @@ function App() {
         {/* Summary Output */}
         <SummaryDisplay
           summary={summary}
+          onSummaryChange={setSummary}
           isLoading={isLoading}
           error={error}
           fromDate={fromDate}

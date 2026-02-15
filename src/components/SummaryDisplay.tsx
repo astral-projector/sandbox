@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import type { SummaryResult } from "../lib/summarize";
+import { exportToHtml } from "../lib/exportHtml";
 
 interface SummaryDisplayProps {
   summary: SummaryResult | null;
+  onSummaryChange: (summary: SummaryResult) => void;
   isLoading: boolean;
   error: string | null;
   fromDate: Date;
@@ -19,8 +21,42 @@ function formatRange(from: Date, to: Date): string {
   return `${fromStr} - ${toStr}`;
 }
 
+function EditableText({
+  value,
+  onChange,
+  className,
+  tag: Tag = "p",
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  className?: string;
+  tag?: "p" | "span";
+}) {
+  const ref = useRef<HTMLElement>(null);
+
+  const handleBlur = useCallback(() => {
+    const el = ref.current;
+    if (el && el.textContent !== null && el.textContent !== value) {
+      onChange(el.textContent);
+    }
+  }, [onChange, value]);
+
+  return (
+    <Tag
+      ref={ref as never}
+      contentEditable
+      suppressContentEditableWarning
+      onBlur={handleBlur}
+      className={`outline-none focus:ring-2 focus:ring-indigo-200 focus:bg-indigo-50/30 rounded px-0.5 -mx-0.5 transition-colors ${className ?? ""}`}
+    >
+      {value}
+    </Tag>
+  );
+}
+
 export default function SummaryDisplay({
   summary,
+  onSummaryChange,
   isLoading,
   error,
   fromDate,
@@ -30,6 +66,77 @@ export default function SummaryDisplay({
   topContributors,
 }: SummaryDisplayProps) {
   const [expanded, setExpanded] = useState(true);
+
+  const updateSummaryText = useCallback(
+    (text: string) => {
+      if (summary) onSummaryChange({ ...summary, summary: text });
+    },
+    [summary, onSummaryChange]
+  );
+
+  const updateTopic = useCallback(
+    (index: number, text: string) => {
+      if (!summary) return;
+      const topics = [...summary.topics];
+      if (text.trim() === "") {
+        topics.splice(index, 1);
+      } else {
+        topics[index] = text;
+      }
+      onSummaryChange({ ...summary, topics });
+    },
+    [summary, onSummaryChange]
+  );
+
+  const updateInsightLabel = useCallback(
+    (index: number, label: string) => {
+      if (!summary) return;
+      const insights = summary.insights.map((ins, i) =>
+        i === index ? { ...ins, label } : ins
+      );
+      onSummaryChange({ ...summary, insights });
+    },
+    [summary, onSummaryChange]
+  );
+
+  const updateInsightText = useCallback(
+    (index: number, text: string) => {
+      if (!summary) return;
+      const insights = summary.insights.map((ins, i) =>
+        i === index ? { ...ins, text } : ins
+      );
+      onSummaryChange({ ...summary, insights });
+    },
+    [summary, onSummaryChange]
+  );
+
+  const removeInsight = useCallback(
+    (index: number) => {
+      if (!summary) return;
+      const insights = summary.insights.filter((_, i) => i !== index);
+      onSummaryChange({ ...summary, insights });
+    },
+    [summary, onSummaryChange]
+  );
+
+  const handleExport = useCallback(() => {
+    if (!summary) return;
+    const html = exportToHtml({
+      dateRange: formatRange(fromDate, toDate),
+      messageCount,
+      memberCount,
+      summary,
+      topContributors,
+    });
+
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `chat-summary-${fromDate.toISOString().slice(0, 10)}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [summary, fromDate, toDate, messageCount, memberCount, topContributors]);
 
   if (isLoading) {
     return (
@@ -84,25 +191,40 @@ export default function SummaryDisplay({
             {messageCount} messages &middot; {memberCount} members
           </p>
         </div>
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="text-xs font-medium text-indigo-600 hover:text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors"
-        >
-          {expanded ? "Collapse" : "Expand"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            className="text-xs font-medium text-indigo-600 hover:text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors inline-flex items-center gap-1.5"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Export HTML
+          </button>
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-xs font-medium text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            {expanded ? "Collapse" : "Expand"}
+          </button>
+        </div>
       </div>
 
       {expanded && (
         <div className="px-6 py-5 space-y-5">
+          <p className="text-[10px] text-gray-400 italic">Click any text to edit</p>
+
           {/* Summary paragraph */}
           {summary.summary && (
             <div>
               <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
                 Summary
               </h3>
-              <p className="text-sm text-gray-700 leading-relaxed">
-                {summary.summary}
-              </p>
+              <EditableText
+                value={summary.summary}
+                onChange={updateSummaryText}
+                className="text-sm text-gray-700 leading-relaxed"
+              />
             </div>
           )}
 
@@ -116,7 +238,12 @@ export default function SummaryDisplay({
                 {summary.topics.map((topic, i) => (
                   <span
                     key={i}
-                    className="px-3 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 rounded-full"
+                    contentEditable
+                    suppressContentEditableWarning
+                    onBlur={(e) =>
+                      updateTopic(i, e.currentTarget.textContent ?? "")
+                    }
+                    className="px-3 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 rounded-full outline-none focus:ring-2 focus:ring-indigo-200"
                   >
                     {topic}
                   </span>
@@ -133,11 +260,34 @@ export default function SummaryDisplay({
               </h3>
               <ul className="space-y-3">
                 {summary.insights.map((insight, i) => (
-                  <li key={i} className="text-sm text-gray-700 leading-relaxed">
-                    <span className="font-semibold text-gray-900">
-                      {insight.label}:
-                    </span>{" "}
-                    {insight.text}
+                  <li
+                    key={i}
+                    className="text-sm text-gray-700 leading-relaxed group flex gap-2"
+                  >
+                    <div className="flex-1">
+                      <EditableText
+                        value={insight.label}
+                        onChange={(val) => updateInsightLabel(i, val)}
+                        className="font-semibold text-gray-900 inline"
+                        tag="span"
+                      />
+                      <span className="font-semibold text-gray-900">: </span>
+                      <EditableText
+                        value={insight.text}
+                        onChange={(val) => updateInsightText(i, val)}
+                        className="inline"
+                        tag="span"
+                      />
+                    </div>
+                    <button
+                      onClick={() => removeInsight(i)}
+                      className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition-opacity shrink-0 mt-0.5"
+                      title="Remove insight"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </li>
                 ))}
               </ul>
