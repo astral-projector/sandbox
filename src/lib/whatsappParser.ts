@@ -55,24 +55,33 @@ function isSystemMessage(content: string): boolean {
  * We capture: dateStr, timeStr, ampm (optional), sender, messageStart
  */
 
+// Date part: supports /, ., and - as separators (e.g. 1/15/23, 15.01.23, 15-01-2023)
+const DATE_PART = String.raw`(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4})`;
+const TIME_PART = String.raw`(\d{1,2}:\d{2}(?::\d{2})?)`;
+const AMPM_PART = String.raw`(AM|PM|am|pm|a\.m\.|p\.m\.)?`;
+
 // Bracket format: [1/15/23, 2:30:15 PM] John: message
-// Also handles [1/15/23, 14:30:15] John: message
-const BRACKET_RE =
-  /^\[(\d{1,2}\/\d{1,2}\/\d{2,4}),\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*(AM|PM|am|pm|a\.m\.|p\.m\.)?\]\s*([^:]+):\s*(.*)/;
+// Also handles [15.01.23, 14:30:15] John: message
+const BRACKET_RE = new RegExp(
+  String.raw`^\[${DATE_PART},\s*${TIME_PART}\s*${AMPM_PART}\]\s*([^:]+):\s*(.*)`
+);
 
 // Dash format: 1/15/23, 14:30 - John: message
-// Also handles: 15/01/2023, 2:30 pm - John: message
-const DASH_RE =
-  /^(\d{1,2}\/\d{1,2}\/\d{2,4}),\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*(AM|PM|am|pm|a\.m\.|p\.m\.)?\s*-\s*([^:]+):\s*(.*)/;
+// Also handles: 15.01.2023, 2:30 pm - John: message
+const DASH_RE = new RegExp(
+  String.raw`^${DATE_PART},\s*${TIME_PART}\s*${AMPM_PART}\s*-\s*([^:]+):\s*(.*)`
+);
 
 // Dash format for system messages (no sender/colon):
 // 1/15/23, 14:30 - Messages and calls are end-to-end encrypted...
-const DASH_SYSTEM_RE =
-  /^(\d{1,2}\/\d{1,2}\/\d{2,4}),\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*(AM|PM|am|pm|a\.m\.|p\.m\.)?\s*-\s*(.*)/;
+const DASH_SYSTEM_RE = new RegExp(
+  String.raw`^${DATE_PART},\s*${TIME_PART}\s*${AMPM_PART}\s*-\s*(.*)`
+);
 
 // Bracket format for system messages (no sender/colon):
-const BRACKET_SYSTEM_RE =
-  /^\[(\d{1,2}\/\d{1,2}\/\d{2,4}),\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*(AM|PM|am|pm|a\.m\.|p\.m\.)?\]\s*(.*)/;
+const BRACKET_SYSTEM_RE = new RegExp(
+  String.raw`^\[${DATE_PART},\s*${TIME_PART}\s*${AMPM_PART}\]\s*(.*)`
+);
 
 interface LineMatch {
   dateStr: string;
@@ -143,11 +152,11 @@ function parseDateTime(
   timeStr: string,
   ampm: string | undefined
 ): Date {
-  const dateParts = dateStr.split("/").map(Number);
+  const dateParts = dateStr.split(/[\/.\-]/).map(Number);
   let month: number, day: number, year: number;
 
   // Heuristic: if last part has 4 digits → DD/MM/YYYY
-  const yearPart = dateStr.split("/")[2];
+  const yearPart = dateStr.split(/[\/.\-]/)[2];
   if (yearPart.length === 4) {
     // DD/MM/YYYY
     day = dateParts[0];
@@ -181,7 +190,9 @@ function parseDateTime(
 }
 
 export function parseWhatsAppChat(text: string): ParseResult {
-  const lines = text.split(/\r?\n/);
+  // Strip BOM and Unicode directional markers that WhatsApp exports include
+  const cleaned = text.replace(/[\uFEFF\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, "");
+  const lines = cleaned.split(/\r?\n/);
   const messages: ChatMessage[] = [];
   let currentMessage: ChatMessage | null = null;
 

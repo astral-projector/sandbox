@@ -3,9 +3,10 @@ import { useCallback, useRef, useState } from "react";
 interface FileUploadProps {
   onFileLoaded: (text: string) => void;
   hasFile: boolean;
+  messageCount: number;
 }
 
-export default function FileUpload({ onFileLoaded, hasFile }: FileUploadProps) {
+export default function FileUpload({ onFileLoaded, hasFile, messageCount }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -87,12 +88,14 @@ export default function FileUpload({ onFileLoaded, hasFile }: FileUploadProps) {
             Upload different file
           </button>
         </div>
-        <div className="flex items-center gap-2 pt-1 text-xs text-indigo-600">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-          </svg>
-          <span>Pick a date range below and click <strong>Summarize</strong></span>
-        </div>
+        {messageCount > 0 && (
+          <div className="flex items-center gap-2 pt-1 text-xs text-indigo-600">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+            <span>Pick a date range below and click <strong>Summarize</strong></span>
+          </div>
+        )}
         <input
           ref={inputRef}
           type="file"

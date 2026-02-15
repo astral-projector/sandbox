@@ -136,6 +136,7 @@ function App() {
         <FileUpload
           onFileLoaded={handleFileLoaded}
           hasFile={parseResult !== null}
+          messageCount={parseResult?.messages.length ?? 0}
         />
 
         {/* Chat info note */}
@@ -145,6 +146,24 @@ function App() {
             {formatDate(parseResult.latestDate)} &bull;{" "}
             {parseResult.messages.length} messages loaded
           </p>
+        )}
+
+        {/* Parse error: file loaded but no messages found */}
+        {parseResult && parseResult.messages.length === 0 && (
+          <div className="bg-amber-50 rounded-xl border border-amber-200 p-5 space-y-2">
+            <p className="text-sm font-medium text-amber-800">
+              No messages found in this file
+            </p>
+            <p className="text-xs text-amber-700">
+              The file was read but no WhatsApp messages could be parsed. Make
+              sure you're uploading a <strong>.txt</strong> file from WhatsApp's{" "}
+              <em>Export chat</em> feature (without media). The file should
+              contain lines like:
+            </p>
+            <pre className="text-xs bg-amber-100 rounded-lg p-3 text-amber-900 overflow-x-auto">
+              {"[1/15/23, 2:30 PM] Jane: Hello!\n12/01/2023, 14:30 - Jane: Hello!"}
+            </pre>
+          </div>
         )}
 
         {/* Date Range Selection */}
