@@ -10,7 +10,7 @@ import {
   formatDate,
   type ParseResult,
 } from "./lib/whatsappParser";
-import { generateSummary } from "./lib/summarize";
+import { generateSummary, computeTopContributors, type SummaryResult } from "./lib/summarize";
 
 function App() {
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
@@ -18,7 +18,7 @@ function App() {
   const [toDate, setToDate] = useState<Date>(new Date());
   const [apiKey, setApiKey] = useState<string>("");
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-  const [summary, setSummary] = useState<string | null>(null);
+  const [summary, setSummary] = useState<SummaryResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bulletCount, setBulletCount] = useState(5);
@@ -28,6 +28,13 @@ function App() {
     if (!parseResult) return [];
     return filterMessagesByDateRange(parseResult.messages, fromDate, toDate);
   }, [parseResult, fromDate, toDate]);
+
+  const topContributors = useMemo(
+    () => computeTopContributors(filteredMessages),
+    [filteredMessages]
+  );
+
+  const memberCount = topContributors.length;
 
   const handleFileLoaded = useCallback((text: string) => {
     const result = parseWhatsAppChat(text);
@@ -199,6 +206,11 @@ function App() {
           summary={summary}
           isLoading={isLoading}
           error={error}
+          fromDate={fromDate}
+          toDate={toDate}
+          messageCount={filteredMessages.length}
+          memberCount={memberCount}
+          topContributors={topContributors}
         />
 
         {/* API Key Modal */}
