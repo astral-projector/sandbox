@@ -57,7 +57,7 @@ export default function FileUpload({ onFileLoaded, hasFile }: FileUploadProps) {
 
   if (hasFile && fileName) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
@@ -86,6 +86,12 @@ export default function FileUpload({ onFileLoaded, hasFile }: FileUploadProps) {
           >
             Upload different file
           </button>
+        </div>
+        <div className="flex items-center gap-2 pt-1 text-xs text-indigo-600">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+          </svg>
+          <span>Pick a date range below and click <strong>Summarize</strong></span>
         </div>
         <input
           ref={inputRef}

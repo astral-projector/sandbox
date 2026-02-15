@@ -59,7 +59,7 @@ export default function DateRangeSelector({
           disabled={isLoading || filteredCount === 0}
           className="px-5 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-lg transition-colors"
         >
-          {isLoading ? "Generating..." : "Go"}
+          {isLoading ? "Summarizing..." : "Summarize"}
         </button>
       </div>
 
