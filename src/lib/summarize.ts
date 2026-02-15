@@ -18,7 +18,8 @@ function formatMessagesForPrompt(messages: ChatMessage[]): string {
 export async function generateSummary(
   apiKey: string,
   messages: ChatMessage[],
-  bulletCount: number = 5
+  bulletCount: number = 5,
+  sentenceCount: number = 3
 ): Promise<string> {
   const client = new Anthropic({
     apiKey,
@@ -43,7 +44,7 @@ Produce exactly ${bulletCount} bullet points summarizing this chat. Rules:
 
 • Output EXACTLY ${bulletCount} bullet points — this is both the maximum and the target. No more, no fewer.
 • Attribute main topics to their speakers. When a bullet covers a key topic, insight, or argument, attribute it to the person who raised or drove it (e.g., "Sarah raised concerns about…", "Mark proposed…"). You don't need to attribute every minor detail — just make sure the reader knows who was behind the major points.
-• Each bullet point must be 3–6 sentences long. No more, no less.
+• Each bullet point must be exactly ${sentenceCount} sentence${sentenceCount === 1 ? "" : "s"} long. No more, no less.
 ${bulletCount <= 5 ? "• With only " + bulletCount + " bullet points, you must ruthlessly prioritize the most important insights and pack maximum information density into each point. Combine related ideas rather than dropping them." : "• With " + bulletCount + " bullet points, give individual topics their own dedicated point where possible."}
 • Every bullet must be substantive — no filler, no throat-clearing, no generic statements. Each one should convey a concrete insight, finding, or takeaway.
 • Use plain, direct language. Avoid vague summarizations like "The group discussed various aspects of…"

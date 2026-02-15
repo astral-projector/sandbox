@@ -22,6 +22,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bulletCount, setBulletCount] = useState(5);
+  const [sentenceCount, setSentenceCount] = useState(3);
 
   const filteredMessages = useMemo(() => {
     if (!parseResult) return [];
@@ -63,7 +64,7 @@ function App() {
     setSummary(null);
 
     try {
-      const result = await generateSummary(apiKey, filteredMessages, bulletCount);
+      const result = await generateSummary(apiKey, filteredMessages, bulletCount, sentenceCount);
       setSummary(result);
     } catch (err: unknown) {
       const message =
@@ -78,7 +79,7 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [apiKey, filteredMessages, bulletCount]);
+  }, [apiKey, filteredMessages, bulletCount, sentenceCount]);
 
   const handleApiKeySubmit = (key: string) => {
     setApiKey(key);
@@ -188,6 +189,8 @@ function App() {
             isLoading={isLoading}
             bulletCount={bulletCount}
             onBulletCountChange={setBulletCount}
+            sentenceCount={sentenceCount}
+            onSentenceCountChange={setSentenceCount}
           />
         )}
 

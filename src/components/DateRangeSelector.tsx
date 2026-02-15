@@ -1,6 +1,7 @@
 import { toInputDateString, fromInputDateString } from "../lib/whatsappParser";
 
 const BULLET_OPTIONS = [3, 4, 5, 6, 7, 8, 9, 10] as const;
+const SENTENCE_OPTIONS = [1, 2, 3, 4, 5, 6] as const;
 
 interface DateRangeSelectorProps {
   from: Date;
@@ -13,6 +14,8 @@ interface DateRangeSelectorProps {
   isLoading: boolean;
   bulletCount: number;
   onBulletCountChange: (count: number) => void;
+  sentenceCount: number;
+  onSentenceCountChange: (count: number) => void;
 }
 
 export default function DateRangeSelector({
@@ -26,6 +29,8 @@ export default function DateRangeSelector({
   isLoading,
   bulletCount,
   onBulletCountChange,
+  sentenceCount,
+  onSentenceCountChange,
 }: DateRangeSelectorProps) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
@@ -63,7 +68,7 @@ export default function DateRangeSelector({
 
       <div className="flex flex-wrap items-end gap-3">
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Summary length</label>
+          <label className="block text-xs text-gray-500 mb-1">Bullet points</label>
           <div className="flex gap-1">
             {BULLET_OPTIONS.map((n) => (
               <button
@@ -71,6 +76,25 @@ export default function DateRangeSelector({
                 onClick={() => onBulletCountChange(n)}
                 className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${
                   bulletCount === n
+                    ? "bg-indigo-600 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Sentences each</label>
+          <div className="flex gap-1">
+            {SENTENCE_OPTIONS.map((n) => (
+              <button
+                key={n}
+                onClick={() => onSentenceCountChange(n)}
+                className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${
+                  sentenceCount === n
                     ? "bg-indigo-600 text-white"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
