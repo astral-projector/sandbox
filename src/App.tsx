@@ -21,6 +21,7 @@ function App() {
   const [summary, setSummary] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bulletCount, setBulletCount] = useState(5);
 
   const filteredMessages = useMemo(() => {
     if (!parseResult) return [];
@@ -62,7 +63,7 @@ function App() {
     setSummary(null);
 
     try {
-      const result = await generateSummary(apiKey, filteredMessages);
+      const result = await generateSummary(apiKey, filteredMessages, bulletCount);
       setSummary(result);
     } catch (err: unknown) {
       const message =
@@ -77,7 +78,7 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [apiKey, filteredMessages]);
+  }, [apiKey, filteredMessages, bulletCount]);
 
   const handleApiKeySubmit = (key: string) => {
     setApiKey(key);
@@ -185,6 +186,8 @@ function App() {
             onGenerate={handleGenerate}
             filteredCount={filteredMessages.length}
             isLoading={isLoading}
+            bulletCount={bulletCount}
+            onBulletCountChange={setBulletCount}
           />
         )}
 

@@ -17,7 +17,8 @@ function formatMessagesForPrompt(messages: ChatMessage[]): string {
 
 export async function generateSummary(
   apiKey: string,
-  messages: ChatMessage[]
+  messages: ChatMessage[],
+  bulletCount: number = 5
 ): Promise<string> {
   const client = new Anthropic({
     apiKey,
@@ -28,7 +29,7 @@ export async function generateSummary(
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 1024,
+    max_tokens: 2048,
     messages: [
       {
         role: "user",
@@ -38,13 +39,17 @@ export async function generateSummary(
 ${formatted}
 ---
 
-Please provide:
-1. A brief "vibe check" line at the top summarizing the overall energy/mood of the chat in this period (one sentence, conversational tone).
-2. Then list 5–10 key topics/themes discussed. For each topic:
-   - Write it as a bullet point in a succinct, conversational tone
-   - Specifically mention which people brought up, dominated, or drove each topic
+Produce exactly ${bulletCount} bullet points summarizing this chat. Rules:
 
-Keep it concise and readable. Use plain text with bullet points (• character). Do not use markdown headers.`,
+• Output EXACTLY ${bulletCount} bullet points — this is both the maximum and the target. No more, no fewer.
+• Attribute main topics to their speakers. When a bullet covers a key topic, insight, or argument, attribute it to the person who raised or drove it (e.g., "Sarah raised concerns about…", "Mark proposed…"). You don't need to attribute every minor detail — just make sure the reader knows who was behind the major points.
+• Each bullet point must be 3–6 sentences long. No more, no less.
+${bulletCount <= 5 ? "• With only " + bulletCount + " bullet points, you must ruthlessly prioritize the most important insights and pack maximum information density into each point. Combine related ideas rather than dropping them." : "• With " + bulletCount + " bullet points, give individual topics their own dedicated point where possible."}
+• Every bullet must be substantive — no filler, no throat-clearing, no generic statements. Each one should convey a concrete insight, finding, or takeaway.
+• Use plain, direct language. Avoid vague summarizations like "The group discussed various aspects of…"
+• Prefix each bullet with a short bolded label (e.g., **Market Shift:**).
+• Use the • character for bullets.
+• Respond with ONLY the bullet points. No preamble, no closing remarks, no headers.`,
       },
     ],
   });

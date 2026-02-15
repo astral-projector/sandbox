@@ -1,5 +1,7 @@
 import { toInputDateString, fromInputDateString } from "../lib/whatsappParser";
 
+const BULLET_OPTIONS = [3, 4, 5, 6, 7, 8, 9, 10] as const;
+
 interface DateRangeSelectorProps {
   from: Date;
   to: Date;
@@ -9,6 +11,8 @@ interface DateRangeSelectorProps {
   onGenerate: () => void;
   filteredCount: number;
   isLoading: boolean;
+  bulletCount: number;
+  onBulletCountChange: (count: number) => void;
 }
 
 export default function DateRangeSelector({
@@ -20,6 +24,8 @@ export default function DateRangeSelector({
   onGenerate,
   filteredCount,
   isLoading,
+  bulletCount,
+  onBulletCountChange,
 }: DateRangeSelectorProps) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
@@ -51,6 +57,27 @@ export default function DateRangeSelector({
               onChange={(e) => onToChange(fromInputDateString(e.target.value))}
               className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
             />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Summary length</label>
+          <div className="flex gap-1">
+            {BULLET_OPTIONS.map((n) => (
+              <button
+                key={n}
+                onClick={() => onBulletCountChange(n)}
+                className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${
+                  bulletCount === n
+                    ? "bg-indigo-600 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {n}
+              </button>
+            ))}
           </div>
         </div>
 
