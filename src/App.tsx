@@ -3,6 +3,8 @@ import FileUpload from "./components/FileUpload";
 import DateRangeSelector from "./components/DateRangeSelector";
 import ApiKeyModal from "./components/ApiKeyModal";
 import SummaryDisplay from "./components/SummaryDisplay";
+import SharedView from "./components/SharedView";
+import { getSharedDataFromUrl } from "./lib/shareUtils";
 import {
   parseWhatsAppChat,
   filterMessagesByDateRange,
@@ -12,7 +14,7 @@ import {
 } from "./lib/whatsappParser";
 import { generateSummary, computeTopContributors, type SummaryResult } from "./lib/summarize";
 
-function App() {
+function MainApp() {
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [fromDate, setFromDate] = useState<Date>(new Date());
   const [toDate, setToDate] = useState<Date>(new Date());
@@ -225,6 +227,14 @@ function App() {
       </div>
     </div>
   );
+}
+
+function App() {
+  const sharedData = getSharedDataFromUrl();
+  if (sharedData) {
+    return <SharedView data={sharedData} />;
+  }
+  return <MainApp />;
 }
 
 export default App;
