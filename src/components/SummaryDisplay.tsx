@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import type { SummaryResult } from "../lib/summarize";
 import { exportToHtml } from "../lib/exportHtml";
+import { exportToMarkdown } from "../lib/exportMarkdown";
 
 interface SummaryDisplayProps {
   summary: SummaryResult | null;
@@ -138,6 +139,23 @@ export default function SummaryDisplay({
     URL.revokeObjectURL(url);
   }, [summary, fromDate, toDate, messageCount, memberCount, topContributors]);
 
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyMarkdown = useCallback(() => {
+    if (!summary) return;
+    const md = exportToMarkdown({
+      dateRange: formatRange(fromDate, toDate),
+      messageCount,
+      memberCount,
+      summary,
+      topContributors,
+    });
+    navigator.clipboard.writeText(md).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [summary, fromDate, toDate, messageCount, memberCount, topContributors]);
+
   if (isLoading) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
@@ -192,6 +210,15 @@ export default function SummaryDisplay({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleCopyMarkdown}
+            className="text-xs font-medium text-indigo-600 hover:text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors inline-flex items-center gap-1.5"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            {copied ? "Copied!" : "Copy Markdown"}
+          </button>
           <button
             onClick={handleExport}
             className="text-xs font-medium text-indigo-600 hover:text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors inline-flex items-center gap-1.5"
