@@ -4,7 +4,7 @@ import DateRangeSelector from "./components/DateRangeSelector";
 import ApiKeyModal from "./components/ApiKeyModal";
 import SummaryDisplay from "./components/SummaryDisplay";
 import SharedView from "./components/SharedView";
-import { getSharedDataFromUrl } from "./lib/shareUtils";
+import { parseShareHash, getSavedLinks, deleteSharedLink, type SharedLink } from "./lib/shareUtils";
 import {
   parseWhatsAppChat,
   filterMessagesByDateRange,
@@ -25,6 +25,16 @@ function MainApp() {
   const [error, setError] = useState<string | null>(null);
   const [bulletCount, setBulletCount] = useState(5);
   const [sentenceCount, setSentenceCount] = useState(3);
+  const [sharedLinks, setSharedLinks] = useState<SharedLink[]>(() => getSavedLinks());
+
+  const refreshSharedLinks = useCallback(() => {
+    setSharedLinks(getSavedLinks());
+  }, []);
+
+  const handleDeleteLink = useCallback((id: string) => {
+    deleteSharedLink(id);
+    refreshSharedLinks();
+  }, [refreshSharedLinks]);
 
   const filteredMessages = useMemo(() => {
     if (!parseResult) return [];
@@ -214,7 +224,39 @@ function MainApp() {
           messageCount={filteredMessages.length}
           memberCount={memberCount}
           topContributors={topContributors}
+          onLinkShared={refreshSharedLinks}
         />
+
+        {/* Shared Links */}
+        {sharedLinks.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
+            <h2 className="text-sm font-semibold text-gray-900">Shared Links</h2>
+            <ul className="space-y-2">
+              {sharedLinks.map((link) => (
+                <li
+                  key={link.id}
+                  className="flex items-center justify-between gap-3 text-xs group"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-gray-700 truncate">
+                      {link.dateRange}
+                    </p>
+                    <p className="text-gray-400 truncate">{link.url}</p>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteLink(link.id)}
+                    className="shrink-0 text-gray-300 hover:text-red-500 transition-colors p-1"
+                    title="Delete shared link"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* API Key Modal */}
         {showApiKeyModal && (
@@ -230,9 +272,9 @@ function MainApp() {
 }
 
 function App() {
-  const sharedData = getSharedDataFromUrl();
-  if (sharedData) {
-    return <SharedView data={sharedData} />;
+  const parsed = parseShareHash();
+  if (parsed) {
+    return <SharedView id={parsed.id} data={parsed.data} />;
   }
   return <MainApp />;
 }

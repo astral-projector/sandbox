@@ -14,6 +14,7 @@ interface SummaryDisplayProps {
   messageCount: number;
   memberCount: number;
   topContributors: { name: string; count: number }[];
+  onLinkShared?: () => void;
 }
 
 function formatRange(from: Date, to: Date): string {
@@ -66,6 +67,7 @@ export default function SummaryDisplay({
   messageCount,
   memberCount,
   topContributors,
+  onLinkShared,
 }: SummaryDisplayProps) {
   const [expanded, setExpanded] = useState(true);
 
@@ -170,8 +172,9 @@ export default function SummaryDisplay({
     navigator.clipboard.writeText(url).then(() => {
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
+      onLinkShared?.();
     });
-  }, [summary, fromDate, toDate, messageCount, memberCount, topContributors]);
+  }, [summary, fromDate, toDate, messageCount, memberCount, topContributors, onLinkShared]);
 
   if (isLoading) {
     return (
