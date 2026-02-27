@@ -1,10 +1,10 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import FileUpload from "./components/FileUpload";
 import DateRangeSelector from "./components/DateRangeSelector";
 import ApiKeyModal from "./components/ApiKeyModal";
 import SummaryDisplay from "./components/SummaryDisplay";
 import SharedView from "./components/SharedView";
-import { parseShareHash } from "./lib/shareUtils";
+import { parseShareHash, fetchSharedData, type SharedData } from "./lib/shareUtils";
 import {
   parseWhatsAppChat,
   filterMessagesByDateRange,
@@ -228,10 +228,46 @@ function MainApp() {
   );
 }
 
+function ShareLoader({ blobId }: { blobId: string }) {
+  const [data, setData] = useState<SharedData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    fetchSharedData(blobId)
+      .then(setData)
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, [blobId]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-sm text-gray-500">Loading shared summary...</p>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-sm text-gray-500">
+          This shared summary could not be found or has expired.
+        </p>
+      </div>
+    );
+  }
+
+  return <SharedView data={data} />;
+}
+
 function App() {
   const parsed = parseShareHash();
-  if (parsed) {
-    return <SharedView data={parsed} />;
+  if (parsed?.type === "inline") {
+    return <SharedView data={parsed.data} />;
+  }
+  if (parsed?.type === "blob") {
+    return <ShareLoader blobId={parsed.blobId} />;
   }
   return <MainApp />;
 }

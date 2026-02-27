@@ -8,14 +8,11 @@ export interface SharedData {
   topContributors: { name: string; count: number }[];
 }
 
-const PUBLISHED_KEY = "whatsapp-summarizer-published-url";
+const BLOB_ID_KEY = "whatsapp-summarizer-blob-id";
+const PUBLISHED_URL_KEY = "whatsapp-summarizer-published-url";
 
-export function encodeShareData(data: SharedData): string {
-  const json = JSON.stringify(data);
-  return btoa(unescape(encodeURIComponent(json)));
-}
-
-export function decodeShareData(encoded: string): SharedData | null {
+// Keep for backward-compat with old inline-data share links
+function decodeShareData(encoded: string): SharedData | null {
   try {
     const json = decodeURIComponent(escape(atob(encoded)));
     return JSON.parse(json);
@@ -24,44 +21,81 @@ export function decodeShareData(encoded: string): SharedData | null {
   }
 }
 
-function buildFullUrl(data: SharedData): string {
-  const encoded = encodeShareData(data);
-  return `${window.location.origin}${window.location.pathname}#/share/${encoded}`;
-}
-
 export async function publishSummary(data: SharedData): Promise<string> {
-  const fullUrl = buildFullUrl(data);
+  const existingBlobId = localStorage.getItem(BLOB_ID_KEY);
+  const existingUrl = localStorage.getItem(PUBLISHED_URL_KEY);
 
-  // Shorten via our serverless proxy to avoid CORS issues
-  try {
-    const resp = await fetch("/api/shorten", {
-      method: "POST",
+  // If we already have a blob, just update it — URL stays the same
+  if (existingBlobId && existingUrl) {
+    const resp = await fetch(`/api/blob?id=${existingBlobId}`, {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: fullUrl }),
+      body: JSON.stringify(data),
     });
-    if (resp.ok) {
-      const { shortUrl } = await resp.json();
-      if (shortUrl && shortUrl.startsWith("http")) {
-        localStorage.setItem(PUBLISHED_KEY, shortUrl);
-        return shortUrl;
-      }
-    }
-  } catch {
-    // Network error — fall through to full URL
+    if (resp.ok) return existingUrl;
+    // If update fails (e.g. blob expired), fall through to create new
   }
 
-  // Fallback: use the full URL directly
-  localStorage.setItem(PUBLISHED_KEY, fullUrl);
-  return fullUrl;
+  // Create a new blob
+  const createResp = await fetch("/api/blob", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!createResp.ok) throw new Error("Failed to publish summary");
+  const { blobId } = await createResp.json();
+
+  const shareUrl = `${window.location.origin}${window.location.pathname}#/share/${blobId}`;
+
+  // Try to shorten
+  let finalUrl = shareUrl;
+  try {
+    const shortenResp = await fetch("/api/shorten", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: shareUrl }),
+    });
+    if (shortenResp.ok) {
+      const { shortUrl } = await shortenResp.json();
+      if (shortUrl?.startsWith("http")) finalUrl = shortUrl;
+    }
+  } catch {
+    // Shortening failed — use full URL
+  }
+
+  localStorage.setItem(BLOB_ID_KEY, blobId);
+  localStorage.setItem(PUBLISHED_URL_KEY, finalUrl);
+  return finalUrl;
 }
 
 export function getPublishedUrl(): string | null {
-  return localStorage.getItem(PUBLISHED_KEY);
+  return localStorage.getItem(PUBLISHED_URL_KEY);
 }
 
-export function parseShareHash(): SharedData | null {
+export async function fetchSharedData(blobId: string): Promise<SharedData> {
+  const resp = await fetch(`/api/blob?id=${blobId}`);
+  if (!resp.ok) throw new Error("Share not found");
+  return resp.json();
+}
+
+export type ShareHashResult =
+  | { type: "blob"; blobId: string }
+  | { type: "inline"; data: SharedData }
+  | null;
+
+export function parseShareHash(): ShareHashResult {
   const hash = window.location.hash;
   if (!hash.startsWith("#/share/")) return null;
-  const encoded = hash.slice("#/share/".length);
-  return decodeShareData(encoded);
+  const payload = hash.slice("#/share/".length);
+
+  // jsonblob IDs are numeric strings
+  if (/^\d+$/.test(payload)) {
+    return { type: "blob", blobId: payload };
+  }
+
+  // Legacy: inline base64-encoded data
+  const decoded = decodeShareData(payload);
+  if (decoded) return { type: "inline", data: decoded };
+
+  return null;
 }
