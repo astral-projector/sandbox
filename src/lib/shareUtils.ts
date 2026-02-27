@@ -45,7 +45,7 @@ export async function publishSummary(data: SharedData): Promise<string> {
   if (!createResp.ok) throw new Error("Failed to publish summary");
   const { blobId } = await createResp.json();
 
-  const shareUrl = `${window.location.origin}${window.location.pathname}#/share/${blobId}`;
+  const shareUrl = `${window.location.origin}${window.location.pathname}?share=${blobId}`;
 
   // Try to shorten
   let finalUrl = shareUrl;
@@ -78,24 +78,29 @@ export async function fetchSharedData(blobId: string): Promise<SharedData> {
   return resp.json();
 }
 
-export type ShareHashResult =
+export type ShareParseResult =
   | { type: "blob"; blobId: string }
   | { type: "inline"; data: SharedData }
   | null;
 
-export function parseShareHash(): ShareHashResult {
-  const hash = window.location.hash;
-  if (!hash.startsWith("#/share/")) return null;
-  const payload = hash.slice("#/share/".length);
-
-  // jsonblob IDs are numeric strings
-  if (/^\d+$/.test(payload)) {
-    return { type: "blob", blobId: payload };
+export function parseShareParam(): ShareParseResult {
+  // Current format: ?share=<blobId>
+  const params = new URLSearchParams(window.location.search);
+  const blobId = params.get("share");
+  if (blobId) {
+    return { type: "blob", blobId };
   }
 
-  // Legacy: inline base64-encoded data
-  const decoded = decodeShareData(payload);
-  if (decoded) return { type: "inline", data: decoded };
+  // Legacy format: #/share/<base64-encoded-data>
+  const hash = window.location.hash;
+  if (hash.startsWith("#/share/")) {
+    const payload = hash.slice("#/share/".length);
+    if (/^\d+$/.test(payload)) {
+      return { type: "blob", blobId: payload };
+    }
+    const decoded = decodeShareData(payload);
+    if (decoded) return { type: "inline", data: decoded };
+  }
 
   return null;
 }

@@ -4,7 +4,7 @@ import DateRangeSelector from "./components/DateRangeSelector";
 import ApiKeyModal from "./components/ApiKeyModal";
 import SummaryDisplay from "./components/SummaryDisplay";
 import SharedView from "./components/SharedView";
-import { parseShareHash, fetchSharedData, type SharedData } from "./lib/shareUtils";
+import { parseShareParam, fetchSharedData, type SharedData } from "./lib/shareUtils";
 import {
   parseWhatsAppChat,
   filterMessagesByDateRange,
@@ -262,7 +262,7 @@ function ShareLoader({ blobId }: { blobId: string }) {
 }
 
 function App() {
-  const parsed = parseShareHash();
+  const parsed = parseShareParam();
   if (parsed?.type === "inline") {
     return <SharedView data={parsed.data} />;
   }
