@@ -32,20 +32,22 @@ function buildFullUrl(data: SharedData): string {
 export async function publishSummary(data: SharedData): Promise<string> {
   const fullUrl = buildFullUrl(data);
 
-  // Try to shorten with TinyURL
+  // Shorten via our serverless proxy to avoid CORS issues
   try {
-    const resp = await fetch(
-      `https://tinyurl.com/api-create.php?url=${encodeURIComponent(fullUrl)}`
-    );
+    const resp = await fetch("/api/shorten", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: fullUrl }),
+    });
     if (resp.ok) {
-      const shortUrl = await resp.text();
-      if (shortUrl.startsWith("http")) {
+      const { shortUrl } = await resp.json();
+      if (shortUrl && shortUrl.startsWith("http")) {
         localStorage.setItem(PUBLISHED_KEY, shortUrl);
         return shortUrl;
       }
     }
   } catch {
-    // CORS or network error — fall through to full URL
+    // Network error — fall through to full URL
   }
 
   // Fallback: use the full URL directly
