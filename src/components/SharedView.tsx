@@ -1,32 +1,10 @@
 import type { SharedData } from "../lib/shareUtils";
-import { isLinkRevoked } from "../lib/shareUtils";
 
 interface SharedViewProps {
-  id: string;
   data: SharedData;
 }
 
-export default function SharedView({ id, data }: SharedViewProps) {
-  if (isLinkRevoked(id)) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="max-w-md mx-auto px-4 text-center space-y-3">
-          <div className="w-12 h-12 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
-            <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-            </svg>
-          </div>
-          <h1 className="text-lg font-semibold text-gray-900">
-            This summary has been removed
-          </h1>
-          <p className="text-sm text-gray-500">
-            The person who shared this summary has deleted it.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
+export default function SharedView({ data }: SharedViewProps) {
   const { dateRange, messageCount, memberCount, summary, topContributors } =
     data;
 

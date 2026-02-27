@@ -8,19 +8,7 @@ export interface SharedData {
   topContributors: { name: string; count: number }[];
 }
 
-export interface SharedLink {
-  id: string;
-  url: string;
-  dateRange: string;
-  createdAt: string;
-}
-
-const LINKS_KEY = "whatsapp-summarizer-shared-links";
-const REVOKED_KEY = "whatsapp-summarizer-revoked-links";
-
-function generateId(): string {
-  return Math.random().toString(36).slice(2, 10);
-}
+const PUBLISHED_KEY = "whatsapp-summarizer-published-url";
 
 export function encodeShareData(data: SharedData): string {
   const json = JSON.stringify(data);
@@ -36,61 +24,42 @@ export function decodeShareData(encoded: string): SharedData | null {
   }
 }
 
-export function buildShareUrl(data: SharedData): string {
-  const id = generateId();
+function buildFullUrl(data: SharedData): string {
   const encoded = encodeShareData(data);
-  const url = `${window.location.origin}${window.location.pathname}#/share/${id}/${encoded}`;
-
-  // Save to local link history
-  const links = getSavedLinks();
-  links.push({ id, url, dateRange: data.dateRange, createdAt: new Date().toISOString() });
-  localStorage.setItem(LINKS_KEY, JSON.stringify(links));
-
-  return url;
+  return `${window.location.origin}${window.location.pathname}#/share/${encoded}`;
 }
 
-export function parseShareHash(): { id: string; data: SharedData } | null {
+export async function publishSummary(data: SharedData): Promise<string> {
+  const fullUrl = buildFullUrl(data);
+
+  // Try to shorten with TinyURL
+  try {
+    const resp = await fetch(
+      `https://tinyurl.com/api-create.php?url=${encodeURIComponent(fullUrl)}`
+    );
+    if (resp.ok) {
+      const shortUrl = await resp.text();
+      if (shortUrl.startsWith("http")) {
+        localStorage.setItem(PUBLISHED_KEY, shortUrl);
+        return shortUrl;
+      }
+    }
+  } catch {
+    // CORS or network error — fall through to full URL
+  }
+
+  // Fallback: use the full URL directly
+  localStorage.setItem(PUBLISHED_KEY, fullUrl);
+  return fullUrl;
+}
+
+export function getPublishedUrl(): string | null {
+  return localStorage.getItem(PUBLISHED_KEY);
+}
+
+export function parseShareHash(): SharedData | null {
   const hash = window.location.hash;
   if (!hash.startsWith("#/share/")) return null;
-  const rest = hash.slice("#/share/".length);
-  const slashIdx = rest.indexOf("/");
-  if (slashIdx === -1) return null;
-  const id = rest.slice(0, slashIdx);
-  const encoded = rest.slice(slashIdx + 1);
-  const data = decodeShareData(encoded);
-  if (!data) return null;
-  return { id, data };
-}
-
-export function getSavedLinks(): SharedLink[] {
-  try {
-    const raw = localStorage.getItem(LINKS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-export function deleteSharedLink(id: string): void {
-  // Remove from saved links
-  const links = getSavedLinks().filter((l) => l.id !== id);
-  localStorage.setItem(LINKS_KEY, JSON.stringify(links));
-
-  // Add to revoked set
-  const revoked = getRevokedIds();
-  revoked.add(id);
-  localStorage.setItem(REVOKED_KEY, JSON.stringify([...revoked]));
-}
-
-export function isLinkRevoked(id: string): boolean {
-  return getRevokedIds().has(id);
-}
-
-function getRevokedIds(): Set<string> {
-  try {
-    const raw = localStorage.getItem(REVOKED_KEY);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
-  } catch {
-    return new Set();
-  }
+  const encoded = hash.slice("#/share/".length);
+  return decodeShareData(encoded);
 }
