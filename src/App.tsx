@@ -149,13 +149,23 @@ function MainApp() {
           messageCount={parseResult?.messages.length ?? 0}
         />
 
-        {/* Chat info note */}
-        {parseResult && parseResult.messages.length > 0 && (
-          <p className="text-xs text-gray-500 text-center">
-            Chat spans from {formatDate(parseResult.earliestDate)} to{" "}
-            {formatDate(parseResult.latestDate)} &bull;{" "}
-            {parseResult.messages.length} messages loaded
-          </p>
+        {/* Generate button — shown immediately after file loads */}
+        {parseResult && parseResult.messages.length > 0 && !summary && !isLoading && (
+          <div className="space-y-2">
+            <p className="text-xs text-gray-500 text-center">
+              {filteredMessages.length} messages from{" "}
+              {formatDate(fromDate)} to {formatDate(toDate)}
+              {filteredMessages.length !== parseResult.messages.length && (
+                <> &bull; {parseResult.messages.length} total in chat</>
+              )}
+            </p>
+            <button
+              onClick={handleGenerate}
+              className="w-full py-3 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors"
+            >
+              Generate Summary
+            </button>
+          </div>
         )}
 
         {/* Parse error: file loaded but no messages found */}
