@@ -3,6 +3,7 @@ import type { SummaryResult } from "../lib/summarize";
 import { exportToHtml } from "../lib/exportHtml";
 import { exportToMarkdown } from "../lib/exportMarkdown";
 import { publishSummary, getPublishedUrl } from "../lib/shareUtils";
+import NotionModal, { getNotionSettings } from "./NotionModal";
 
 interface SummaryDisplayProps {
   summary: SummaryResult | null;
@@ -74,6 +75,8 @@ export default function SummaryDisplay({
   );
   const [publishing, setPublishing] = useState(false);
   const [urlCopied, setUrlCopied] = useState(false);
+  const [showNotionModal, setShowNotionModal] = useState(false);
+  const [notionStatus, setNotionStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
 
   const updateSummaryText = useCallback(
     (text: string) => {
@@ -189,6 +192,50 @@ export default function SummaryDisplay({
     });
   }, [publishedUrl]);
 
+  const exportToNotion = useCallback(
+    async (settings: { token: string; pageId: string }) => {
+      if (!summary) return;
+      setShowNotionModal(false);
+      setNotionStatus("sending");
+      try {
+        const resp = await fetch("/api/notion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            token: settings.token,
+            pageId: settings.pageId,
+            summary: {
+              dateRange: formatRange(fromDate, toDate),
+              messageCount,
+              memberCount,
+              summary,
+              topContributors,
+            },
+          }),
+        });
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.error || "Notion export failed");
+        }
+        setNotionStatus("done");
+        setTimeout(() => setNotionStatus("idle"), 2500);
+      } catch {
+        setNotionStatus("error");
+        setTimeout(() => setNotionStatus("idle"), 3000);
+      }
+    },
+    [summary, fromDate, toDate, messageCount, memberCount, topContributors]
+  );
+
+  const handleNotionExport = useCallback(() => {
+    const settings = getNotionSettings();
+    if (settings) {
+      exportToNotion(settings);
+    } else {
+      setShowNotionModal(true);
+    }
+  }, [exportToNotion]);
+
   if (isLoading) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
@@ -260,6 +307,22 @@ export default function SummaryDisplay({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
             Export HTML
+          </button>
+          <button
+            onClick={handleNotionExport}
+            disabled={notionStatus === "sending"}
+            className="text-xs font-medium text-indigo-600 hover:text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.98-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.84-.046.933-.56.933-1.167V6.354c0-.606-.233-.933-.746-.886l-15.177.887c-.56.046-.747.326-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.746 0-.933-.234-1.493-.933l-4.577-7.186v6.952l1.447.327s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.726l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.14c-.093-.514.28-.886.747-.933zM2.64 1.782l13.635-.933c1.68-.14 2.1.093 2.8.606l3.876 2.753c.466.326.606.746.606 1.26v15.372c0 .933-.327 1.54-1.54 1.634L6.743 23.52c-.887.047-1.307-.093-1.773-.7L1.88 18.893c-.514-.7-.747-1.26-.747-1.906V3.528c0-.84.374-1.54 1.508-1.746z" />
+            </svg>
+            {notionStatus === "sending"
+              ? "Sending..."
+              : notionStatus === "done"
+                ? "Sent!"
+                : notionStatus === "error"
+                  ? "Failed"
+                  : "Notion"}
           </button>
           <button
             onClick={() => setExpanded(!expanded)}
@@ -407,6 +470,13 @@ export default function SummaryDisplay({
             )}
           </div>
         </div>
+      )}
+
+      {showNotionModal && (
+        <NotionModal
+          onDone={exportToNotion}
+          onCancel={() => setShowNotionModal(false)}
+        />
       )}
     </div>
   );
